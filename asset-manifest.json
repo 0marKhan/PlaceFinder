@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/PlaceFinder/static/css/main.b368621a.css",
-    "main.js": "/PlaceFinder/static/js/main.514d506b.js",
+    "main.js": "/PlaceFinder/static/js/main.d95dd03d.js",
     "index.html": "/PlaceFinder/index.html",
     "main.b368621a.css.map": "/PlaceFinder/static/css/main.b368621a.css.map",
-    "main.514d506b.js.map": "/PlaceFinder/static/js/main.514d506b.js.map"
+    "main.d95dd03d.js.map": "/PlaceFinder/static/js/main.d95dd03d.js.map"
   },
   "entrypoints": [
     "static/css/main.b368621a.css",
-    "static/js/main.514d506b.js"
+    "static/js/main.d95dd03d.js"
   ]
 }
