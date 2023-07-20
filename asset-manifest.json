@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/my-app/static/css/main.d5b1b46e.css",
-    "main.js": "/my-app/static/js/main.2407f724.js",
-    "index.html": "/my-app/index.html",
-    "main.d5b1b46e.css.map": "/my-app/static/css/main.d5b1b46e.css.map",
-    "main.2407f724.js.map": "/my-app/static/js/main.2407f724.js.map"
+    "main.css": "/place-finder/static/css/main.d5b1b46e.css",
+    "main.js": "/place-finder/static/js/main.2407f724.js",
+    "index.html": "/place-finder/index.html",
+    "main.d5b1b46e.css.map": "/place-finder/static/css/main.d5b1b46e.css.map",
+    "main.2407f724.js.map": "/place-finder/static/js/main.2407f724.js.map"
   },
   "entrypoints": [
     "static/css/main.d5b1b46e.css",
