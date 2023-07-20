@@ -50,7 +50,7 @@ const MapComponent = ({ outputData, position }) => {
                   handleMarkerClick(data.location.lat, data.location.lng),
               }}
             >
-              <Popup>{`Marker ${outputData[index].name}`}</Popup>
+              <Popup>{`${outputData[index].name}`}</Popup>
             </Marker>
           ) : null
         )}
