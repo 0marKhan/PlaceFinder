@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import MapComponent from "../components/MapComponent";
 import FetchedLocations from "../components/FetchedLocations";
 import ScrollToTopArrow from "../components/ScrollToTopArrow";
+import FormBody from "../components/FormBody";
 import axios from "axios";
 
 const selectOptions = [
@@ -18,11 +19,11 @@ const selectOptions = [
   { value: "car_rental", label: "car rental" },
   { value: "hospital", label: "hospital" },
   { value: "electrician", label: "electrician" },
-  { value: "amusement_park", label: "amusement park" },
-  { value: "mosque", label: "mosque" },
-  { value: "church", label: "church" },
   { value: "park", label: "park" },
 ];
+
+const rapidAPIKey = process.env.REACT_APP_RAPIDAPI_KEY;
+const ninjasAPIKey = process.env.REACT_APP_NINJAS_API_KEY;
 
 const MainPage = () => {
   const [selectedValue, setSelectedValue] = useState("hospital");
@@ -37,12 +38,12 @@ const MainPage = () => {
   });
   const [selectValueError, setSelectValueError] = useState(false);
   const [enteredCountryError, setEnteredCountryError] = useState(false);
-  const [enteredCityError, setEnteredCityError] = useState(false);
+  const [enteredCityError, setEnteredCityError] = useState("");
   const [coordinatesLoaded, setCoordinatesLoaded] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [locationData, setLocationData] = useState({});
   const [locationDataLoaded, setLocationDataLoaded] = useState(false);
-
+  const [isValidCoordinates, setIsValidCoordinates] = useState(true);
   const { latitude, longitude } = coordinates ?? { latitude: 0, longitude: 0 };
 
   const options = {
@@ -55,16 +56,38 @@ const MainPage = () => {
       language: "en",
     },
     headers: {
-      // "X-RapidAPI-Key": "83836b648amsh97b5e8ec6497369p134bb7jsna8e79cb8fed1",
-      "X-RapidAPI-Key": "ec3cbc61e9msh9ad5b234268a2c5p1d0953jsnb764bafffaf8",
+      "X-RapidAPI-Key": rapidAPIKey,
       "X-RapidAPI-Host": "trueway-places.p.rapidapi.com",
     },
   };
 
+  // initialize the coordiates with the default ones if invalid input
+  useEffect(() => {
+    if (
+      (coordinates.latitude === undefined ||
+        coordinates.longitude === undefined) &&
+      coordinates.name === "" &&
+      coordinates.country === "" &&
+      coordinates.state === ""
+    ) {
+      // Set the coordinates to the default value if it is empty
+      setIsValidCoordinates(false);
+      setCoordinates({
+        name: "London",
+        latitude: 51.5073219,
+        longitude: -0.1276474,
+        country: "GB",
+        state: "England",
+      });
+    } else {
+      setIsValidCoordinates(true);
+    }
+  }, [coordinates]);
+
   // call the get location api in here and get place api within it
 
   const getCoordinates = async () => {
-    const apiKey = "cLyk3QUP4+yENdKkRgjoQQ==5Orn0gO0FJdHNOiZ";
+    const apiKey = ninjasAPIKey;
 
     const config = {
       headers: {
@@ -81,8 +104,34 @@ const MainPage = () => {
         `https://api.api-ninjas.com/v1/geocoding?city=${enteredCity}&country=${enteredCountry}`,
         config
       );
-      // setting coordinates for place entered
-      setCoordinates(response.data[0]);
+
+      // Checking if response.data is not undefined before accessing properties
+      if (response.data && response.data[0]) {
+        const { latitude, longitude } = response.data[0];
+        if (latitude === undefined || longitude === undefined) {
+          // Set default coordinates if latitude or longitude is missing
+          setCoordinates({
+            name: "London",
+            latitude: 51.5073219,
+            longitude: -0.1276474,
+            country: "GB",
+            state: "England",
+          });
+        } else {
+          // Setting coordinates for place entered
+          setCoordinates(response.data[0]);
+        }
+      } else {
+        // Set default coordinates if response.data is empty or undefined
+        setCoordinates({
+          name: "London",
+          latitude: 51.5073219,
+          longitude: -0.1276474,
+          country: "GB",
+          state: "England",
+        });
+      }
+
       setFormSubmitted(false);
     } catch (error) {
       console.log(error);
@@ -132,10 +181,6 @@ const MainPage = () => {
     }
   }, [locationData]);
 
-  // useEffect(() => {
-  //   console.log(coordinates);
-  // }, [coordinates]);
-
   const handleSelectionChange = (event) => {
     setSelectedValue(event.target.value);
   };
@@ -164,81 +209,50 @@ const MainPage = () => {
     }
   };
 
-  const loading = <h1>Loading...</h1>;
+  const loading = <h1 className=" items-center">Loading...</h1>;
 
-  const formJSX = (
-    <form className="mx-4 lg:flex lg:justify-center" onSubmit={submitHandler}>
-      <div className="group mt-8 px-4 w-full border-gray-400 focus-within:border-purple-800 h-10 border-2 rounded-xl lg:w-80 ">
-        <input
-          className="w-full h-full outline-none"
-          type="text"
-          placeholder="Country"
-          onChange={enteredCountryHandler}
-        />
-      </div>
-      {enteredCountryError && (
-        <label className="text-red-500 mt-1">Please enter a country</label>
-      )}
-      <div className="group mt-4 px-4 w-full border-gray-400 focus-within:border-purple-800 h-10 border-2 rounded-xl lg:w-80 lg:mt-8 lg:ml-6">
-        <input
-          className="w-full h-full outline-none"
-          type="text"
-          placeholder="City"
-          onChange={enteredCityHandler}
-        />
-      </div>
-      {enteredCityError && (
-        <label className="text-red-500 mt-1">Please enter a city</label>
-      )}
-      <div className="group mt-4 px-4 w-full border-gray-400 focus-within:border-purple-800 h-10 border-2 rounded-xl lg:w-80 lg:mt-8 lg:ml-6 ">
-        <select
-          value={selectedValue}
-          onChange={handleSelectionChange}
-          className="w-full h-full outline-none"
-        >
-          <option value="">Select an option</option>
-          {selectOptions.map((selected) => (
-            <option key={selected.value} value={selected.value}>
-              {selected.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      {selectValueError && (
-        <label className="text-red-500 mt-1">Please select an option</label>
-      )}
-
-      <button
-        className="mt-6 w-full h-10 rounded-xl text-white bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-700 hover:to-purple-900 lg:w-32 lg:mt-8 lg:ml-6"
-        type="submit"
-      >
-        Submit
-      </button>
-    </form>
-  );
+  if (!isValidCoordinates) {
+    return <p>Invalid City or Country Input</p>;
+  }
 
   return (
     <div>
-      <ScrollToTopArrow />
-      {coordinatesLoaded ? formJSX : loading}
-      <div className="lg:flex">
-        <div className="mt-10 mx-4 lg:w-1/2 lg:mx-14 lg:mt-12 lg:pb-5">
-          {coordinatesLoaded & locationDataLoaded ? (
-            <MapComponent outputData={locationData} position={coordinates} />
-          ) : (
-            loading
-          )}
-        </div>
-        <div className="lg:w-1/2">
-          <div className="mt-10 mx-4">
-            {locationDataLoaded ? (
-              <FetchedLocations outputData={locationData} />
+      <div>
+        <ScrollToTopArrow />
+        {coordinatesLoaded ? (
+          <FormBody
+            submitHandler={submitHandler}
+            enteredCountryHandler={enteredCountryHandler}
+            enteredCountryError={enteredCountryError}
+            enteredCityHandler={enteredCityHandler}
+            enteredCityError={enteredCityError}
+            selectedValue={selectedValue}
+            handleSelectionChange={handleSelectionChange}
+            selectOptions={selectOptions}
+          />
+        ) : (
+          loading
+        )}
+        <div className="lg:flex">
+          <div className="mt-10 mx-4 lg:w-1/2 lg:mx-14 lg:mt-12 lg:pb-5">
+            {coordinatesLoaded & locationDataLoaded ? (
+              <MapComponent outputData={locationData} position={coordinates} />
             ) : (
-              <h1>Loading...</h1>
+              loading
             )}
+          </div>
+          <div className="lg:w-1/2">
+            <div className="mt-10 mx-4">
+              {locationDataLoaded ? (
+                <FetchedLocations outputData={locationData} />
+              ) : (
+                <h1 className="justify-center">Loading...</h1>
+              )}
+            </div>
           </div>
         </div>
       </div>
+      )
     </div>
   );
 };
