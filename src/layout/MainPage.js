@@ -3,6 +3,8 @@ import MapComponent from "../components/MapComponent";
 import FetchedLocations from "../components/FetchedLocations";
 import ScrollToTopArrow from "../components/ScrollToTopArrow";
 import FormBody from "../components/FormBody";
+import Backdrop from "@mui/material/Backdrop";
+import CircularProgress from "@mui/material/CircularProgress";
 import axios from "axios";
 
 const selectOptions = [
@@ -44,6 +46,7 @@ const MainPage = () => {
   const [locationData, setLocationData] = useState({});
   const [locationDataLoaded, setLocationDataLoaded] = useState(false);
   const [isValidCoordinates, setIsValidCoordinates] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
   const { latitude, longitude } = coordinates ?? { latitude: 0, longitude: 0 };
 
   const options = {
@@ -61,31 +64,7 @@ const MainPage = () => {
     },
   };
 
-  // initialize the coordiates with the default ones if invalid input
-  useEffect(() => {
-    if (
-      (coordinates.latitude === undefined ||
-        coordinates.longitude === undefined) &&
-      coordinates.name === "" &&
-      coordinates.country === "" &&
-      coordinates.state === ""
-    ) {
-      // Set the coordinates to the default value if it is empty
-      setIsValidCoordinates(false);
-      setCoordinates({
-        name: "London",
-        latitude: 51.5073219,
-        longitude: -0.1276474,
-        country: "GB",
-        state: "England",
-      });
-    } else {
-      setIsValidCoordinates(true);
-    }
-  }, [coordinates]);
-
-  // call the get location api in here and get place api within it
-
+  // getting coordinates of places entered
   const getCoordinates = async () => {
     const apiKey = ninjasAPIKey;
 
@@ -100,50 +79,60 @@ const MainPage = () => {
     };
 
     try {
-      const response = await axios.get(
-        `https://api.api-ninjas.com/v1/geocoding?city=${enteredCity}&country=${enteredCountry}`,
-        config
-      );
-
-      // Checking if response.data is not undefined before accessing properties
-      if (response.data && response.data[0]) {
-        const { latitude, longitude } = response.data[0];
-        if (latitude === undefined || longitude === undefined) {
-          // Set default coordinates if latitude or longitude is missing
-          setCoordinates({
-            name: "London",
-            latitude: 51.5073219,
-            longitude: -0.1276474,
-            country: "GB",
-            state: "England",
-          });
-        } else {
-          // Setting coordinates for place entered
-          setCoordinates(response.data[0]);
-        }
+      if (!enteredCity || !enteredCountry) {
+        setIsValidCoordinates(false);
+        return;
       } else {
-        // Set default coordinates if response.data is empty or undefined
-        setCoordinates({
-          name: "London",
-          latitude: 51.5073219,
-          longitude: -0.1276474,
-          country: "GB",
-          state: "England",
-        });
-      }
+        setLoadingData(true); // Set loadingData to true when the request is sent
+        const response = await Promise.race([
+          axios.get(
+            `https://api.api-ninjas.com/v1/geocoding?city=${enteredCity}&country=${enteredCountry}`,
+            config
+          ),
+          new Promise((resolve, reject) => {
+            setTimeout(() => reject(new Error("Timeout")), 7000); // Timeout after 7 seconds
+          }),
+        ]);
 
-      setFormSubmitted(false);
+        setLoadingData(false); // Set loadingData to false after successful response
+        if (response.data && response.data[0]) {
+          const { latitude, longitude } = response.data[0];
+          if (latitude === undefined || longitude === undefined) {
+            // Set default coordinates if latitude or longitude is missing
+            setCoordinates({
+              name: "London",
+              latitude: 51.5073219,
+              longitude: -0.1276474,
+              country: "GB",
+              state: "England",
+            });
+            setIsValidCoordinates(false); // Set the validity state to false
+          } else {
+            // Setting coordinates for the place entered
+            setCoordinates(response.data[0]);
+            setIsValidCoordinates(true); // Set the validity state to true
+          }
+        } else {
+          setIsValidCoordinates(false); // Set the validity state to false
+        }
+
+        setFormSubmitted(false);
+      }
     } catch (error) {
       console.log(error);
+      setLoadingData(false); // Set loadingData to false in case of an error
+      setIsValidCoordinates(false); // Set the validity state to false in case of an error
     }
   };
 
-  // calling get place api
+  // calling get place api, fetching points of interest based on coordinates
   const getPlace = async (options, retryCount = 4) => {
     try {
-      setLocationDataLoaded(false);
-      const response = await axios.request(options);
-      setLocationData(response.data.results);
+      if (isValidCoordinates) {
+        setLocationDataLoaded(false);
+        const response = await axios.request(options);
+        setLocationData(response.data.results);
+      }
     } catch (error) {
       if (error.response && error.response.status === 429 && retryCount > 0) {
         console.log("Rate limit exceeded. Retrying after 5 seconds...");
@@ -155,12 +144,14 @@ const MainPage = () => {
     }
   };
 
+  // calling getCoordinates function
   useEffect(() => {
     if (formSubmitted) {
       getCoordinates();
     }
   }, [formSubmitted]);
 
+  // calling getPlcae function
   useEffect(() => {
     if (
       coordinates &&
@@ -172,6 +163,7 @@ const MainPage = () => {
     }
   }, [coordinates]);
 
+  // checking if getPlace function has any data
   useEffect(() => {
     if (Object.keys(locationData).length !== 0) {
       setLocationDataLoaded(true);
@@ -181,6 +173,8 @@ const MainPage = () => {
     }
   }, [locationData]);
 
+  /////////////////////////////////////////////////
+  ///////////////state function handlers////////////
   const handleSelectionChange = (event) => {
     setSelectedValue(event.target.value);
   };
@@ -195,6 +189,7 @@ const MainPage = () => {
 
   const submitHandler = (event) => {
     event.preventDefault();
+
     if (!enteredCountry) {
       setEnteredCountryError(true);
     }
@@ -204,35 +199,73 @@ const MainPage = () => {
     if (!selectedValue) {
       setSelectValueError(true);
     }
+
+    // Proceed with form submission only if there are no errors
     if (enteredCity && enteredCountry && selectedValue) {
       setFormSubmitted(true);
     }
   };
 
-  const loading = <h1 className=" items-center">Loading...</h1>;
+  // variables ofr jsx code
+
+  const loading = (
+    <div>
+      <Backdrop
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={loadingData}
+        onClick={() => setLoadingData(false)}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
+    </div>
+  );
+
+  const formBodyVariable = (
+    <FormBody
+      submitHandler={submitHandler}
+      enteredCountryHandler={enteredCountryHandler}
+      enteredCountryError={enteredCountryError}
+      enteredCityHandler={enteredCityHandler}
+      enteredCityError={enteredCityError}
+      selectedValue={selectedValue}
+      handleSelectionChange={handleSelectionChange}
+      selectOptions={selectOptions}
+      selectValueError={selectValueError}
+    />
+  );
+
+  if (loadingData) {
+    return (
+      <div>
+        <div>{formBodyVariable}</div>
+        <Backdrop
+          sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+          open={loadingData}
+          onClick={() => setLoadingData(false)}
+        >
+          <CircularProgress color="inherit" />
+        </Backdrop>
+      </div>
+    );
+  }
 
   if (!isValidCoordinates) {
-    return <p>Invalid City or Country Input</p>;
+    return (
+      <div>
+        <div>{formBodyVariable}</div>
+        <p className="flex justify-center mt-5 text-red-600 lg:mt-24">
+          Invalid City or Country Input
+        </p>
+      </div>
+    );
   }
 
   return (
     <div>
       <div>
         <ScrollToTopArrow />
-        {coordinatesLoaded ? (
-          <FormBody
-            submitHandler={submitHandler}
-            enteredCountryHandler={enteredCountryHandler}
-            enteredCountryError={enteredCountryError}
-            enteredCityHandler={enteredCityHandler}
-            enteredCityError={enteredCityError}
-            selectedValue={selectedValue}
-            handleSelectionChange={handleSelectionChange}
-            selectOptions={selectOptions}
-          />
-        ) : (
-          loading
-        )}
+        {formBodyVariable}
+
         <div className="lg:flex">
           <div className="mt-10 mx-4 lg:w-1/2 lg:mx-14 lg:mt-12 lg:pb-5">
             {coordinatesLoaded & locationDataLoaded ? (
@@ -246,7 +279,7 @@ const MainPage = () => {
               {locationDataLoaded ? (
                 <FetchedLocations outputData={locationData} />
               ) : (
-                <h1 className="justify-center">Loading...</h1>
+                <h1 className="justify-center">{loading}</h1>
               )}
             </div>
           </div>
